@@ -66,6 +66,7 @@ class feature_eng:
 
         data = pd.concat([train, test])
 
+        print("Encoding...")
         for c in data.columns:
             if data[c].dtype == 'object':
                 lbl = LabelEncoder()
@@ -119,13 +120,13 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     score += r2_score(y_train,clf.predict(X_train))
     print('Fold %d: Score %f' % (fold, clf.score(X_train, y_train)))
 
-    prediction0 = predictions0.mean(axis=1)
-    prediction1 = predictions1.mean(axis=1)
-    score /= n_splits
-    oof_score = r2_score(y, oof_predictions)
+prediction0 = predictions0.mean(axis=1)
+prediction1 = predictions1.mean(axis=1)
+score /= n_splits
+oof_score = r2_score(y, oof_predictions)
 
 print('=====================')
-print('Final Score %f' % score)
+#print('Final Score %f' % score)
 print('Final Out-of-Fold Score %f' % oof_score)
 print('=====================')
 

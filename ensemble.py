@@ -118,7 +118,7 @@ ens1.fit(df, train.y)
 
 # In Sample R2
 ens1_insample_pred = ens1.predict(df)
-r2_score(train.y, ens1_insample_pred ) # 0.6998279121628439
+r2_score(train.y, ens1_insample_pred ) # 0.62753671854582205 0.6998279121628439
 
 # Predict
 ens1_pred = ens1.predict(df_test) # LB: -0.77554
