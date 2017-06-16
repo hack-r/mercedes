@@ -11,13 +11,13 @@ file = open("template1.py","r")
 template1 = file.readlines()
 
 
-models = ["linear_model.ARDRegression",
+models = [#"linear_model.ARDRegression",
             "linear_model.BayesianRidge",
             "linear_model.ElasticNet",
             "linear_model.ElasticNetCV",
             "linear_model.HuberRegressor",
-            "linear_model.Lars", # crazy scores, check predictions
-            "linear_model.LarsCV", # crazy scores, check predictions
+            #"linear_model.Lars", # crazy scores, check predictions
+            #"linear_model.LarsCV", # crazy scores, check predictions
             "linear_model.Lasso",
             "linear_model.LassoCV",
             "linear_model.LassoLars",
@@ -41,16 +41,17 @@ models = ["linear_model.ARDRegression",
             "linear_model.Ridge",
             #"linear_model.RidgeClassifier",
             #"linear_model.RidgeClassifierCV",
-            "linear_model.RidgeCV",
+            "linear_model.RidgeCV"#,
             #"linear_model.SGDClassifier",
-            "linear_model.SGDRegressor",# consider for removal # crazy scores, check predictions
-            "linear_model.TheilSenRegressor", # very slow consider for removal
-            "linear_model.lars_path", # args
-            "linear_model.lasso_path", # args
-            "linear_model.lasso_stability_path", # args
-            "linear_model.logistic_regression_path", # args
-            "linear_model.orthogonal_mp",
-            "linear_model.orthogonal_mp_gram"]
+            #"linear_model.SGDRegressor",# consider for removal # crazy scores, check predictions
+            #"linear_model.TheilSenRegressor", # very slow consider for removal
+            #"linear_model.lars_path", # args
+            #"linear_model.lasso_path", # args
+            #"linear_model.lasso_stability_path", # args
+            #"linear_model.logistic_regression_path", # args
+            #"linear_model.orthogonal_mp",
+            #"linear_model.orthogonal_mp_gram"
+]
 
 params = ["n_iter, tol",
             "n_iter, tol",

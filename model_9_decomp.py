@@ -22,7 +22,7 @@ from sklearn.decomposition import PCA, FastICA, NMF, TruncatedSVD
 
 random.seed(1337)
 
-print("Model 9: linear_model.LassoLars")
+print("Model 9: linear_model.LinearRegression")
 
 # read datasets
 print("read datasets...")
@@ -147,9 +147,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     X_train, X_valid = X[train_index, :], X[test_index, :]
     y_train, y_valid = y[train_index], y[test_index]
 
-    clf = linear_model.LassoLars(alpha=0.01, copy_X=True, fit_intercept=True, #, eps=...
-     fit_path=True, max_iter=500, normalize=True, positive=False,
-     precompute='auto', verbose=False)
+    clf = linear_model.LinearRegression()
     clf.fit(X_train, y_train)
 
     pred0 = clf.predict(X)
@@ -157,7 +155,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     oof_predictions[test_index] = clf.predict(X_valid)
     predictions0[:, fold] = pred0
     predictions1[:, fold] = pred1
-    score += r2_score(clf.predict(X_train), y_train)
+    score += r2_score(y_train,clf.predict(X_train))
     print('Fold %d: Score %f'%(fold, clf.score(X_train, y_train)))
 
     prediction0 = predictions0.mean(axis=1)
@@ -170,9 +168,11 @@ print('Final Score %f'%score)
 print ('Final Out-of-Fold Score %f'%oof_score)
 print ('=====================')
 
-submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
-submission.y = prediction0
+submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
+submission.y       = prediction0
+submission.columns = ['ID', 'pred_9_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_9_decomp_pred_insample.csv', index=False)
 
-submission.y = prediction1
+submission.y       = prediction1
+submission.columns = ['ID', 'pred_9_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_9_decomp_pred_layer1_test.csv', index=False)

@@ -16,6 +16,7 @@ import xgboost as xgb
 from sklearn import datasets, linear_model
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import train_test_split
+from sklearn.base import BaseEstimator,TransformerMixin, ClassifierMixin
 
 random.seed(1337)
 
@@ -33,6 +34,35 @@ class feature_eng:
         y = train.y
         train.drop(['ID', 'y'], axis=1, inplace=True)
         test.drop(['ID', ], axis=1, inplace=True)
+
+        print("Dropping redundant features...")
+        data = train.select_dtypes(['number'])  # dropping non numeric columns
+        correlationMatrix = data.apply(lambda s: data.corrwith(s))  # finding correlation matrix
+
+        highlycorrelated = correlationMatrix > 0.85  # finding highly correlated attributes (cut off
+        iters = range(len(correlationMatrix.columns) - 1)
+        drop_cols = []
+        corr_val = 0.85  # choose the appropriate cut-off value to determine highly correlated features
+
+        for i in iters:  # iterate through columns
+            for j in range(i):  # iterate through rows
+                item = correlationMatrix.iloc[j:(j + 1), (i + 1):(i + 2)]  # finding the cell
+                col = item.columns  # storing column number
+                row = item.index  # storing row number
+                val = item.values  # storing item value
+                if val >= corr_val:  # checking if it is highly correlated with the corr_cal alreay declared
+                    # Prints the correlated feature set and the corr val
+                    print(col.values[0], "|", row.values[0], "|", round(val[0][0], 2))
+                    drop_cols.append(i)  # storing all the column values which are highly correlated
+
+        drops = sorted(set(drop_cols))[::-1]  # sort the list of columns to be deleted
+
+        for i in drops:
+            col = train.iloc[:,
+                  (i + 1):(i + 2)].columns.values  # Here train is the input df. Hence delete that particular column
+            train = train.drop(col, axis=1)
+
+        test = test[train.columns]
 
         data = pd.concat([train, test])
 
@@ -86,7 +116,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     oof_predictions[test_index] = clf.predict(X_valid)
     predictions0[:, fold] = pred0
     predictions1[:, fold] = pred1
-    score += r2_score(clf.predict(X_train), y_train)
+    score += r2_score(y_train,clf.predict(X_train))
     print('Fold %d: Score %f' % (fold, clf.score(X_train, y_train)))
 
     prediction0 = predictions0.mean(axis=1)
@@ -99,10 +129,14 @@ print('Final Score %f' % score)
 print('Final Out-of-Fold Score %f' % oof_score)
 print('=====================')
 
-submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
-submission.y = prediction0
+print("Creating layer 1 prediction CSV files for training and test")
+submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
+submission.y       = prediction0
+submission.columns = ['ID', 'pred_MODELNUMBER']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_MODELNUMBER_pred_insample.csv', index=False)
 
-submission.y = prediction1
+submission.y       = prediction1
+submission.columns = ['ID', 'pred_MODELNUMBER']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_MODELNUMBER_pred_layer1_test.csv',
                   index=False)
+print("Done.")

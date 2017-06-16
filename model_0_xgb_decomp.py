@@ -189,7 +189,9 @@ print ('=====================')
 submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 submission.y = prediction0
+submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_0_xgb_decomp_pred_insample.csv', index=False)
 
 submission.y = prediction1
+submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_0_xgb_decomp_pred_layer1_test.csv', index=False)
