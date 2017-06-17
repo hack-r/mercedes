@@ -15,8 +15,8 @@ from sklearn.metrics import r2_score
 
 # read datasets
 print("read datasets...")
-train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
-test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
+train_clean = pd.read_csv('train.csv') #T:/RNA/Baltimore/Jason/ad_hoc/mb/input/
+test_clean = pd.read_csv('test.csv')
 
 def xgb_r2_score(preds, dtrain):
     labels = dtrain.get_label()
@@ -28,8 +28,8 @@ print("Model 0 XGB: Dart XGB with Decomp, 12 comps")
 
 # read datasets
 print("read datasets...")
-train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
-test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
+train = pd.read_csv('train.csv') #T:/RNA/Baltimore/Jason/ad_hoc/mb/input/
+test  = pd.read_csv('test.csv')
 
 # process columns, apply LabelEncoder to categorical features
 print("process columns, apply LabelEncoder to categorical features...")
@@ -139,8 +139,8 @@ xgb_params = {
 }
 
 print("LOO CV and OOF prediction...")
-n_splits = 5
-kf = KFold(n_splits=n_splits)
+#n_splits = 5
+#kf = KFold(n_splits=n_splits)
 X = train.drop(["y"], axis=1)
 X = X.drop(["ID"], axis=1)
 X = X.as_matrix()
@@ -148,18 +148,23 @@ S = test.drop(["ID"], axis=1)
 S = S.as_matrix()
 y = y_train
 # test     = test.as_matrix()
-kf.get_n_splits(X)
+
+#groups = np.array(range(0, 4209))
+#logo = LeaveOneGroupOut()
+#logo.get_n_splits(X, y, groups)
+from sklearn.model_selection import LeaveOneOut
+loo = LeaveOneOut()
+oof_predictions = np.zeros(X.shape[0])
+#for train_index, test_index in logo.split(X, y, groups):
+counter = 0
+n_splits = loo.get_n_splits(X)
 
 predictions0 = np.zeros((train.shape[0], n_splits))
 predictions1 = np.zeros((test.shape[0], n_splits))
 score = 0
 
-groups = np.array(range(0, 4209))
-logo = LeaveOneGroupOut()
-logo.get_n_splits(X, y, groups)
-
-oof_predictions = np.zeros(X.shape[0])
-for fold, (train_index, test_index) in logo.split(X,y,groups):
+for train_index, test_index in loo.split(X):
+    #print("TRAIN:", train_index, "VALID:", test_index)
     X_train, X_valid = X[train_index, :], X[test_index, :]
     y_train, y_valid = y[train_index], y[test_index]
 
@@ -171,16 +176,17 @@ for fold, (train_index, test_index) in logo.split(X,y,groups):
     watchlist = [(d_train, 'train'), (d_valid, 'valid')]
 
     print("training model...")
-    model = xgb.train(xgb_params, d_train, 1000, watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
-                      verbose_eval=False)
+    model = xgb.train(xgb_params, d_train, feval=xgb_r2_score, maximize=True,
+                      verbose_eval=True)
     print("prediction...")
     pred0 = model.predict(d_train_all, ntree_limit=model.best_ntree_limit)
     pred1 = model.predict(d_test, ntree_limit=model.best_ntree_limit)
     oof_predictions[test_index] = model.predict(d_valid, ntree_limit=model.best_ntree_limit)
-    predictions0[:, fold] = pred0
-    predictions1[:, fold] = pred1
-    score += model.best_score
-    print('Fold %d: Score %f' % (fold, model.best_score))
+    predictions0[:, counter] = pred0 #
+    predictions1[:, counter] = pred1 #[:, fold]
+    score += r2_score(y_train[train_index], model.predict(d_train, ntree_limit=model.best_ntree_limit))
+    counter = counter+1
+    print(' Score %f' % (score/(counter))) #fold,
 
 prediction0 = predictions0.mean(axis=1)
 prediction1 = predictions1.mean(axis=1)

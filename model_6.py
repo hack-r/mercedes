@@ -109,9 +109,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     X_train, X_valid = X[train_index, :], X[test_index, :]
     y_train, y_valid = y[train_index], y[test_index]
 
-    clf = linear_model.LassoLars(alpha=0.01, copy_X=True, fit_intercept=True, #, eps=...
-     fit_path=True, max_iter=500, normalize=True, positive=False,
-     precompute='auto', verbose=False)
+    clf = linear_model.LassoLars()
     clf.fit(X_train, y_train)
 
     pred0 = clf.predict(X)
@@ -128,7 +126,7 @@ score /= n_splits
 oof_score = r2_score(y, oof_predictions)
 
 print('=====================')
-#print('Final Score %f' % score)
+print('Final Score %f' % score)
 print('Final Out-of-Fold Score %f' % oof_score)
 print('=====================')
 

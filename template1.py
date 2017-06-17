@@ -195,7 +195,7 @@ score /= n_splits
 oof_score = r2_score(y, oof_predictions)
 
 print('=====================')
-#print('Final Score %f'%score)
+print('Final Score %f'%score)
 print ('Final Out-of-Fold Score %f'%oof_score)
 print ('=====================')
 
