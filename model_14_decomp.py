@@ -26,39 +26,8 @@ print("Model 14: linear_model.RidgeCV")
 
 # read datasets
 print("read datasets...")
-train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
-test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
-
-print("Dropping redundant features...")
-data = train.select_dtypes(['number'])  # dropping non numeric columns
-correlationMatrix = data.apply(lambda s: data.corrwith(s))  # finding correlation matrix
-
-highlycorrelated = correlationMatrix > 0.85  # finding highly correlated attributes (cut off
-iters = range(len(correlationMatrix.columns) - 1)
-drop_cols = []
-corr_val = 0.85  # choose the appropriate cut-off value to determine highly correlated features
-
-for i in iters:  # iterate through columns
-    for j in range(i):  # iterate through rows
-        item = correlationMatrix.iloc[j:(j + 1), (i + 1):(i + 2)]  # finding the cell
-        col = item.columns  # storing column number
-        row = item.index  # storing row number
-        val = item.values  # storing item value
-        if val >= corr_val:  # checking if it is highly correlated with the corr_cal alreay declared
-            # Prints the correlated feature set and the corr val
-            print(col.values[0], "|", row.values[0], "|", round(val[0][0], 2))
-            drop_cols.append(i)  # storing all the column values which are highly correlated
-
-drops = sorted(set(drop_cols))[::-1]  # sort the list of columns to be deleted
-
-for i in drops:
-    col = train.iloc[:,
-          (i + 1):(i + 2)].columns.values  # Here train is the input df. Hence delete that particular column
-    train = train.drop(col, axis=1)
-
-test = test[train.columns]
-
-data = pd.concat([train, test])
+train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_pre_cleaned.csv')
+test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test_pre_cleaned.csv')
 
 # process columns, apply LabelEncoder to categorical features
 print("process columns, apply LabelEncoder to categorical features...")
@@ -199,11 +168,12 @@ print('Final Score %f'%score)
 print ('Final Out-of-Fold Score %f'%oof_score)
 print ('=====================')
 
-submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
-submission.y       = prediction0
-submission.columns = ['ID', 'pred_14_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_14_decomp_pred_insample.csv', index=False)
+if oof_score > .4 and score > .4:
+    submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
+    submission.y       = prediction0
+    submission.columns = ['ID', 'pred_14_decomp']
+    submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_14_decomp_pred_insample.csv', index=False)
 
-submission.y       = prediction1
-submission.columns = ['ID', 'pred_14_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_14_decomp_pred_layer1_test.csv', index=False)
+    submission.y       = prediction1
+    submission.columns = ['ID', 'pred_14_decomp']
+    submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_14_decomp_pred_layer1_test.csv', index=False)

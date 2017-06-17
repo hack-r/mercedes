@@ -93,23 +93,60 @@ df.shape
 df_test.shape
 
 print("Ensemble Model 0: AdaBoostRegressor")
-ens0 = AdaBoostRegressor(DecisionTreeRegressor(max_depth=4), learning_rate=.05,
-                          n_estimators=300, random_state=1337)
+print("Convert to matrices...")
+X = df.as_matrix()
+test = df_test.as_matrix()
 
-ens0.fit(df, train.y)
+print("Set up KFolds...")
+n_splits = 5
+kf = KFold(n_splits=n_splits)
+kf.get_n_splits(X)
+predictions0 = np.zeros((test.shape[0], n_splits))
+predictions1 = np.zeros((test.shape[0], n_splits))
+#score = 0
 
-# In Sample R2
-ens0_insample_pred = ens0.predict(df)
-r2_score(train.y, ens0_insample_pred ) # 0.62334349931827204
+print("Starting ", n_splits, "-fold CV loop...")
+oof_predictions = np.zeros(X.shape[0])
+#for lr in np.arange(.01,.1,.01):
+#    for md in range(4,6):
+score = 0
+for fold, (train_index, test_index) in enumerate(kf.split(X)):
+    X_train, X_valid = X[train_index, :], X[test_index, :]
+    y_train, y_valid = train.y[train_index], train.y[test_index]
 
-# Predict
-ens0_pred = ens0.predict(df_test) # LB: -.89
+    ens0 = AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, # Grid selected md = 5, lr = .01
+                             n_estimators=300, random_state=1337)
+
+    ens0.fit(X_train, y_train)
+
+    pred0 = ens0.predict(X)
+    pred1 = ens0.predict(test)
+    oof_predictions[test_index] = ens0.predict(X_valid)
+    predictions0[:, fold] = pred0
+    predictions1[:, fold] = pred1
+    score += r2_score(y_train,ens0.predict(X_train))
+    #print('LR: %f MD: %d Fold %d: Score %f' % (lr, md, fold, ens0.score(X_train, y_train)))
+    print('Fold %d: Score %f' % (fold, ens0.score(X_train, y_train)))
+
+prediction0 = predictions0.mean(axis=1)
+prediction1 = predictions1.mean(axis=1)
+score /= n_splits
+oof_score = r2_score(train.y, oof_predictions)
+
+print('=====================')
+#print('Learning Rate %f:' % lr)
+#print('Max Depth %d' % md)
+print('Final Score %f' % score)
+print('Final Out-of-Fold Score %f' % oof_score)
+print('=====================')
+
+ens0_pred = prediction1
 
 submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 submission.y       = ens0_pred
 submission.id      = id
 submission.columns = ['ID', 'y']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/output/layer2_adaboostregressor.csv', index=False)
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/output/layer2_adaboostregressor_cv%f.csv' % oof_score, index=False)
 
 print("Ensemble Model 1: BaggingRegressor")
 ens1  = BaggingRegressor(DecisionTreeRegressor(max_depth=4), random_state=1337) #, learning_rate=.05, n_estimators=300,

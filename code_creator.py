@@ -102,7 +102,10 @@ class create_code:
             print(n)
             code = [s.replace('MODELNUMBER', n.__str__()) for s in template0] # for s in l
             code = [s.replace('MODELNAME', m) for s in code]
-            code = [s.replace('PARAMETERS', "") for s in code] #params[n])
+            if n == 6:
+                code = [s.replace('PARAMETERS', "alpha = 0.01, copy_X = True, fit_intercept = True, fit_path = True, max_iter = 500, normalize = True, positive = False, precompute = 'auto', verbose = False") for s in code]  # params[n])
+            else:
+                code = [s.replace('PARAMETERS', "") for s in code] #params[n])
             output_file = 'model_%i.py' % n
             thefile = open(output_file, 'w')
             for item in code:
@@ -117,7 +120,10 @@ class create_code1:
             print(n)
             code = [s.replace('MODELNUMBER', n.__str__()) for s in template1] # for s in l
             code = [s.replace('MODELNAME', m) for s in code]
-            code = [s.replace('PARAMETERS', "") for s in code] #params[n])
+            if n == 6:
+                code = [s.replace('PARAMETERS', "alpha = 0.01, copy_X = True, fit_intercept = True, fit_path = True, max_iter = 500, normalize = True, positive = False, precompute = 'auto', verbose = False") for s in code]  # params[n])
+            else:
+                code = [s.replace('PARAMETERS', "") for s in code] #params[n])
             output_file = 'model_%i_decomp.py' % n
             thefile = open(output_file, 'w')
             for item in code:

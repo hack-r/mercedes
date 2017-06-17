@@ -1,33 +1,33 @@
 # Jason D. Miller
-
-from sklearn.metrics import r2_score
-from sklearn.model_selection import KFold
-from sklearn.preprocessing import LabelEncoder
-import numpy as np
-import pandas as pd
-from sklearn.kernel_ridge import KernelRidge
+import numpy as np  # linear algebra
+import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import random
-from sklearn import linear_model
-from sklearn.cluster import KMeans
-import os
-import shutil
-import time
+from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
-from sklearn import datasets, linear_model
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import train_test_split
 from sklearn.random_projection import GaussianRandomProjection
 from sklearn.random_projection import SparseRandomProjection
 from sklearn.decomposition import PCA, FastICA, NMF, TruncatedSVD
-
-random.seed(1337)
-
-print("Model 12: linear_model.RANSACRegressor")
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import KFold
+from sklearn.metrics import r2_score
 
 # read datasets
 print("read datasets...")
-train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_pre_cleaned.csv')
-test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test_pre_cleaned.csv')
+train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_pre_cleaned.csv')
+test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test_pre_cleaned.csv')
+
+def xgb_r2_score(preds, dtrain):
+    labels = dtrain.get_label()
+    return 'r2', r2_score(labels, preds)
+
+random.seed(1337)
+
+print("Model 2 XGB: Dart XGB with Decomp, 12 comps, pre-cleaned data, no base feats")
+
+# read datasets
+print("read datasets...")
+train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 
 # process columns, apply LabelEncoder to categorical features
 print("process columns, apply LabelEncoder to categorical features...")
@@ -87,6 +87,13 @@ srp = SparseRandomProjection(n_components=n_srp, dense_output=True, random_state
 srp_results_train = srp.fit_transform(train.drop(["y"], axis=1))
 srp_results_test = srp.transform(test)
 
+# Drop raw features
+print("Drop raw features")
+train = train.iloc[:, [0, 1]]
+test = test.iloc[:, [0]]
+y_train = train["y"]
+y_mean = np.mean(y_train)
+
 # Append decomposition components to datasets
 print("Append PCA components to datasets...")
 for i in range(1, n_pca + 1):
@@ -113,50 +120,66 @@ for i in range(1, n_srp + 1):
     train['srp_' + str(i)] = srp_results_train[:, i - 1]
     test['srp_' + str(i)] = srp_results_test[:, i - 1]
 
-y_train = train["y"]
-y_mean = np.mean(y_train)
-
-# form DMatrices for Xgboost training
-#print("form DMatrices for Xgboost training")
-#dtrain = xgb.DMatrix(train.drop('y', axis=1), y_train)
-#dvalid = xgb.DMatrix(X_valid.drop('y', axis=1), y_valid)
-#dtest  = xgb.DMatrix(test)
+# prepare dict of params for xgboost to run with
+# https://github.com/dmlc/xgboost/blob/master/doc/parameter.md
+xgb_params = {
+    'n_trees': 500,
+    'eta': 0.005,
+    'max_depth': 4,
+    'subsample': .921,  # 0.95, # .921
+    'objective': 'reg:linear',
+    'eval_metric': 'rmse',
+    'base_score': y_mean,  # base prediction = mean(target)
+    'silent': 1,
+    'booster': 'dart',
+    'lambda': 1,  # L2 regularization; higher = more conservative
+    'alpha': 0  # L1 regularization; higher = more conservative
+    # ,'tree_method': 'exact', # Choices: {'auto', 'exact', 'approx', 'hist'}
+    # 'grow_policy': 'lossguide' # only works with hist tree_method, Choices: {'depthwise', 'lossguide'}
+    # 'normalize_type': 'forest', # DART only; tree or forest, default = "tree"
+    # 'rate_drop': 0.1 #[default=0.0] range 0,1
+}
 
 print("5 Fold CV and OOF prediction...")
 n_splits = 5
-kf       = KFold(n_splits=n_splits)
-X        = train.drop(["y"], axis=1)
-X        = X.drop(["ID"], axis=1)
-X        = X.as_matrix()
-S        = test.drop(["ID"], axis=1)
-S        = S.as_matrix()
-y        = y_train
+kf = KFold(n_splits=n_splits)
+X = train.drop(["y"], axis=1)
+X = X.drop(["ID"], axis=1)
+X = X.as_matrix()
+S = test.drop(["ID"], axis=1)
+S = S.as_matrix()
+y = y_train
+# test     = test.as_matrix()
 kf.get_n_splits(X)
 
-print("Set up KFolds...")
-n_splits = 5
-kf = KFold(n_splits=n_splits)
-kf.get_n_splits(X)
 predictions0 = np.zeros((train.shape[0], n_splits))
 predictions1 = np.zeros((test.shape[0], n_splits))
 score = 0
 
-print("Starting ", n_splits, "-fold CV loop...")
+
 oof_predictions = np.zeros(X.shape[0])
 for fold, (train_index, test_index) in enumerate(kf.split(X)):
     X_train, X_valid = X[train_index, :], X[test_index, :]
     y_train, y_valid = y[train_index], y[test_index]
 
-    clf = linear_model.RANSACRegressor()
-    clf.fit(X_train, y_train)
+    d_train = xgb.DMatrix(X_train, label=y_train)
+    d_valid = xgb.DMatrix(X_valid, label=y_valid)
+    d_test = xgb.DMatrix(S)
+    d_train_all = xgb.DMatrix(X, label=y_train)
 
-    pred0 = clf.predict(X)
-    pred1 = clf.predict(S)
-    oof_predictions[test_index] = clf.predict(X_valid)
+    watchlist = [(d_train, 'train'), (d_valid, 'valid')]
+
+    print("training model...")
+    model = xgb.train(xgb_params, d_train, num_boost_round = 1300, evals=watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
+                      verbose_eval=False)
+    print("prediction...")
+    pred0 = model.predict(d_train_all, ntree_limit=model.best_ntree_limit)
+    pred1 = model.predict(d_test, ntree_limit=model.best_ntree_limit)
+    oof_predictions[test_index] = model.predict(d_valid, ntree_limit=model.best_ntree_limit)
     predictions0[:, fold] = pred0
     predictions1[:, fold] = pred1
-    score += r2_score(y_train,clf.predict(X_train))
-    print('Fold %d: Score %f'%(fold, clf.score(X_train, y_train)))
+    score += model.best_score
+    print('Fold %d: Score %f' % (fold, model.best_score))
 
 prediction0 = predictions0.mean(axis=1)
 prediction1 = predictions1.mean(axis=1)
@@ -168,12 +191,12 @@ print('Final Score %f'%score)
 print ('Final Out-of-Fold Score %f'%oof_score)
 print ('=====================')
 
-if oof_score > .4 and score > .4:
-    submission         = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
-    submission.y       = prediction0
-    submission.columns = ['ID', 'pred_12_decomp']
-    submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_12_decomp_pred_insample.csv', index=False)
+submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
-    submission.y       = prediction1
-    submission.columns = ['ID', 'pred_12_decomp']
-    submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_12_decomp_pred_layer1_test.csv', index=False)
+submission.y = prediction0
+submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_2_xgb_decomp_pred_insample.csv', index=False)
+
+submission.y = prediction1
+submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_2_xgb_decomp_pred_layer1_test.csv', index=False)
