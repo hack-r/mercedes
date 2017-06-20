@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 import xgboost as xgb
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 import sklearn.linear_model
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor, BaggingRegressor, AdaBoostRegressor, RandomForestRegressor
 from sklearn.pipeline import make_pipeline, make_union
 from sklearn.utils import check_array
 from sklearn.preprocessing import StandardScaler
@@ -125,8 +125,8 @@ random.seed(1)
 columns = ['z', 'j', 'result']
 result = pd.DataFrame(columns=columns)
 try:
-    for z in range(450,600,15): #np.arange(.0035, .006, .00025):
-        for j in range(1150,1400,50):#np.arange(.92, .96, .002):
+    for z in range(500,600,50): #np.arange(.0035, .006, .00025): #(0,1,1):#
+        for j in range(1175,1400,50):#np.arange(.92, .96, .002):#(0,1,1):#(
 
             print(z)
             print(j)
@@ -136,7 +136,7 @@ try:
             #test = test_clean
 
             xgb_params = {
-                'n_trees': 570,
+                'n_trees': 500,
                 'eta': 0.0045,
                 'max_depth': 4,
                 'subsample': 0.93,
@@ -149,17 +149,24 @@ try:
 
 
 
-            num_boost_rounds = 1200
+            num_boost_rounds = 1225
             # train model
             model = xgb.train(dict(xgb_params, silent=1), dtrain, num_boost_round=num_boost_rounds)
             y_pred = model.predict(dtest)
+
+            print('In-sample R2 score for XGB:')
+            print(r2_score(y_train, model.predict(dtrain)))
+
+            print("OOS R2 score for XGB:")
+            r2 = r2_score(dvalid.get_label(),model.predict(dvalid))
+            print(r2)
+
 
             '''Train the stacked models then predict the test data'''
 
             stacked_pipeline = make_pipeline(
                 StackingEstimator(estimator=LassoLarsCV(normalize=True)),
-                StackingEstimator(
-                    estimator=GradientBoostingRegressor(learning_rate=0.001, loss="huber", max_depth=3, max_features=0.55,
+                StackingEstimator(estimator=GradientBoostingRegressor(learning_rate=0.001, loss="huber", max_depth=3, max_features=0.55,
                                                         min_samples_leaf=18, min_samples_split=14, subsample=0.7)),
                 #StackingEstimator(estimator=BayesianRidge()),
                 #StackingEstimator(estimator=ElasticNetCV()),
@@ -169,9 +176,17 @@ try:
                 #StackingEstimator(estimator=LinearRegression()),
                 #StackingEstimator(estimator=OrthogonalMatchingPursuitCV()),
                 #StackingEstimator(estimator=RANSACRegressor()),
-                #StackingEstimator(estimator=RidgeCV()),
-                LassoLarsCV()
-
+                #tackingEstimator(estimator=RidgeCV()),
+                #LassoLarsCV()      # .6
+                #LinearRegression() # .6
+                #ElasticNetCV()     # worse
+                #OrthogonalMatchingPursuitCV() # worse
+                #LassoLarsIC()      # 0.589969080645
+                #BayesianRidge()    # 0.584972437762
+                #HuberRegressor()   # 0.538743277168
+                #BaggingRegressor() # 0.915862724858...
+                #AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, n_estimators=300, random_state=1337) #0.641126381615
+                RandomForestRegressor() # 0.902507869334
             )
 
             stacked_pipeline.fit(finaltrainset, train.y)
@@ -192,15 +207,14 @@ try:
             sub['ID'] = id_test
             sub['y'] = y_pred * 0.75 + results * 0.25
 
-            # check f2-score (to get higher score - increase num_boost_round in previous cell)
+            print("OOS R2 score for XGB:")
+            r2 = r2_score(dvalid.get_label(),model.predict(dvalid))
+            print(r2)
 
             print("OOS R2 score for stacked_pipeline:")
             #print(r2_score(y_train, stacked_pipeline.predict(X_train)))
             print("unknown...")
 
-            print("OOS R2 score for XGB:")
-            r2 = r2_score(dvalid.get_label(),model.predict(dvalid))
-            print(r2)
 
             print("====================")
             print("z is:", z)
@@ -211,17 +225,29 @@ try:
             result.loc[len(result)] = [z, j, r2]
             result.to_csv("C:/Users/jmiller/Desktop/loop_results.csv")
 
-            if r2 >= 0.4616:
+            if r2 >= 0.4615:
                 print("!!!!!!!!!!!!!!!!!!!!")
                 print("FOUND AN IMPROVEMENT")
                 print("!!!!!!!!!!!!!!!!!!!!")
                 raise StopIteration
 except StopIteration:
    pass
+print("Loop complete.")
 
-sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//jdm_stacked_models.csv', index=False)
+sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//jdm_stacked_models2.csv', index=False)
 
-# In-sample R2 score for stacked_pipeline:
+
+# In-sample R2 score for stacked_pipeline - BaggingRegressor:
+# 0.907594621374
+# In-sample R2 score for XGB:
+# 0.704475595565
+# In-sample R2 score for XGB*pipeline:
+# 0.744883581357
+# OOS XGB R2:
+# 0.460070920708
+# Public LB: 0.55490 (dart)
+
+# In-sample R2 score for stacked_pipeline - LassoLarsCV:
 # 0.605783396205
 # In-sample R2 score for XGB:
 # 0.704783904699
@@ -229,4 +255,5 @@ sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//jdm_stacked_models.cs
 # 0.644203519786
 # OOS XGB R2:
 # 0.461514
-# Public LB: 0.55421
+# Public LB: 0.55421 (gbtree)
+# Public LB: 0.55490 (dart)
