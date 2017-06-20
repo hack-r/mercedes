@@ -13,8 +13,8 @@ from sklearn.metrics import r2_score
 
 # read datasets
 print("read datasets...")
-train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_pre_cleaned.csv')
-test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test_pre_cleaned.csv')
+train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_v2.csv')
+test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 
 def xgb_r2_score(preds, dtrain):
     labels = dtrain.get_label()
@@ -22,11 +22,11 @@ def xgb_r2_score(preds, dtrain):
 
 random.seed(1337)
 
-print("Model 1 XGB: Dart XGB with Decomp, 12 comps, pre-cleaned data")
+print("Model 3 XGB: Dart XGB with Decomp, 12 comps, train_v2 resample")
 
 # read datasets
 print("read datasets...")
-train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_v2.csv')
 test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 
 # process columns, apply LabelEncoder to categorical features
@@ -87,6 +87,9 @@ srp = SparseRandomProjection(n_components=n_srp, dense_output=True, random_state
 srp_results_train = srp.fit_transform(train.drop(["y"], axis=1))
 srp_results_test = srp.transform(test)
 
+y_train = train["y"]
+y_mean = np.mean(y_train)
+
 # Append decomposition components to datasets
 print("Append PCA components to datasets...")
 for i in range(1, n_pca + 1):
@@ -112,9 +115,6 @@ print("Append SRP components to datasets...")
 for i in range(1, n_srp + 1):
     train['srp_' + str(i)] = srp_results_train[:, i - 1]
     test['srp_' + str(i)] = srp_results_test[:, i - 1]
-
-y_train = train["y"]
-y_mean = np.mean(y_train)
 
 # prepare dict of params for xgboost to run with
 # https://github.com/dmlc/xgboost/blob/master/doc/parameter.md
@@ -166,7 +166,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     watchlist = [(d_train, 'train'), (d_valid, 'valid')]
 
     print("training model...")
-    model = xgb.train(xgb_params, d_train, num_boost_round = 1300, evals=watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
+    model = xgb.train(xgb_params, d_train, num_boost_round=1300, evals=watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
                       verbose_eval=False)
     print("prediction...")
     pred0 = model.predict(d_train_all, ntree_limit=model.best_ntree_limit)
@@ -190,9 +190,16 @@ print ('=====================')
 submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 submission.y = prediction0
-submission.columns = ['ID', 'pred_model_1_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_1_xgb_decomp_pred_insample.csv', index=False)
+submission.columns = ['ID', 'pred_model_2_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_3_xgb_decomp_pred_insample.csv', index=False)
 
 submission.y = prediction1
-submission.columns = ['ID', 'pred_model_1_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_1_xgb_decomp_pred_layer1_test.csv', index=False)
+submission.columns = ['ID', 'pred_model_2_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_3_xgb_decomp_pred_layer1_test.csv', index=False)
+
+"""""
+=====================
+Final Score 0.247231
+Final Out-of-Fold Score 0.327118
+=====================
+"""""

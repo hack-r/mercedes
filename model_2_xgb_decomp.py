@@ -194,9 +194,16 @@ print ('=====================')
 submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 submission.y = prediction0
-submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.columns = ['ID', 'pred_model_2_xgb_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_2_xgb_decomp_pred_insample.csv', index=False)
 
 submission.y = prediction1
-submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.columns = ['ID', 'pred_model_2_xgb_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_2_xgb_decomp_pred_layer1_test.csv', index=False)
+
+"""""
+=====================
+Final Score 0.454121
+Final Out-of-Fold Score 0.448379
+=====================
+"""""

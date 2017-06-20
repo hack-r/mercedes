@@ -128,8 +128,8 @@ xgb_params = {
     'base_score': y_mean,  # base prediction = mean(target)
     'silent': 1,
     'booster': 'dart',
-    'lambda': 1,  # L2 regularization; higher = more conservative
-    'alpha': 0  # L1 regularization; higher = more conservative
+    'lambda': .3,  # L2 regularization; higher = more conservative
+    'alpha': .9  # L1 regularization; higher = more conservative
     # ,'tree_method': 'exact', # Choices: {'auto', 'exact', 'approx', 'hist'}
     # 'grow_policy': 'lossguide' # only works with hist tree_method, Choices: {'depthwise', 'lossguide'}
     # 'normalize_type': 'forest', # DART only; tree or forest, default = "tree"
@@ -189,9 +189,16 @@ print ('=====================')
 submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 submission.y = prediction0
-submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.columns = ['ID', 'pred_model_0_xgb_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_0_xgb_decomp_pred_insample.csv', index=False)
 
 submission.y = prediction1
-submission.columns = ['ID', 'pred_MODELNUMBER_xgb']
+submission.columns = ['ID', 'pred_model_0_xgb_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_0_xgb_decomp_pred_layer1_test.csv', index=False)
+
+"""""
+=====================
+Final Score 0.501150
+Final Out-of-Fold Score 0.496927
+=====================
+"""""

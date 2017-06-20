@@ -23,8 +23,8 @@ random.seed(1)
 columns = ['z', 'j', 'Avg R2 within Folds', "OOF R2"]
 result = pd.DataFrame(columns=columns)
 try:
-    for z in range(14,15): #range(200,500,100):
-        for j in range(12,15):#np.arange(0.0001,0.0006, 0.0002):
+    for z in np.arange(0,1.2, .1):
+        for j in np.arange(0.9,1, .1):
 
             print(z)
             print(j)
@@ -51,8 +51,8 @@ try:
             n_pca  = 12
             n_ica  = 12
             n_nmf  = 12
-            n_srp  = z
-            n_grp  = j
+            n_srp  = 8 #z
+            n_grp  = 1 #j
             n_tsvd = 12
             n_comp = 12
 
@@ -77,7 +77,7 @@ try:
             pca2_results_test = pca.transform(test)
 
             # ICA
-            ica = FastICA(n_components=n_ica, random_state=42,max_iter=z, tol=j)
+            ica = FastICA(n_components=n_ica, random_state=42,max_iter=1000, tol=j)
             ica2_results_train = ica.fit_transform(train.drop(["y"], axis=1))
             ica2_results_test = ica.transform(test)
 
@@ -132,8 +132,8 @@ try:
                 'base_score': y_mean,  # base prediction = mean(target)
                 'silent': 1,
                 'booster': 'dart',
-                'lambda': 1,  # L2 regularization; higher = more conservative
-                'alpha': 0   # L1 regularization; higher = more conservative
+                'lambda': .3,  # L2 regularization; higher = more conservative
+                'alpha': .9   # L1 regularization; higher = more conservative
                 #,'tree_method': 'exact', # Choices: {'auto', 'exact', 'approx', 'hist'}
                 #'grow_policy': 'lossguide' # only works with hist tree_method, Choices: {'depthwise', 'lossguide'}
                 #'normalize_type': 'forest', # DART only; tree or forest, default = "tree"

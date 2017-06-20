@@ -165,7 +165,7 @@ try:
             print("Calculating CV R2...")
             from sklearn.metrics import r2_score
 
-            r2 = r2_score(model.predict(dvalid), dvalid.get_label())
+            r2 = r2_score(dvalid.get_label(),model.predict(dvalid))
 
             print("z is:",z)
             print("j is:",j)

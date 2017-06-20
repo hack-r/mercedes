@@ -13,8 +13,8 @@ from sklearn.metrics import r2_score
 
 # read datasets
 print("read datasets...")
-train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train_pre_cleaned.csv')
-test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test_pre_cleaned.csv')
+train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 
 def xgb_r2_score(preds, dtrain):
     labels = dtrain.get_label()
@@ -22,7 +22,7 @@ def xgb_r2_score(preds, dtrain):
 
 random.seed(1337)
 
-print("Model 1 XGB: Dart XGB with Decomp, 12 comps, pre-cleaned data")
+print("Model 0 XGB: Dart XGB with Decomp, 12 comps")
 
 # read datasets
 print("read datasets...")
@@ -128,8 +128,8 @@ xgb_params = {
     'base_score': y_mean,  # base prediction = mean(target)
     'silent': 1,
     'booster': 'dart',
-    'lambda': 1,  # L2 regularization; higher = more conservative
-    'alpha': 0  # L1 regularization; higher = more conservative
+    'lambda': .3,  # L2 regularization; higher = more conservative
+    'alpha': .9  # L1 regularization; higher = more conservative
     # ,'tree_method': 'exact', # Choices: {'auto', 'exact', 'approx', 'hist'}
     # 'grow_policy': 'lossguide' # only works with hist tree_method, Choices: {'depthwise', 'lossguide'}
     # 'normalize_type': 'forest', # DART only; tree or forest, default = "tree"
@@ -152,7 +152,6 @@ predictions0 = np.zeros((train.shape[0], n_splits))
 predictions1 = np.zeros((test.shape[0], n_splits))
 score = 0
 
-
 oof_predictions = np.zeros(X.shape[0])
 for fold, (train_index, test_index) in enumerate(kf.split(X)):
     X_train, X_valid = X[train_index, :], X[test_index, :]
@@ -166,7 +165,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     watchlist = [(d_train, 'train'), (d_valid, 'valid')]
 
     print("training model...")
-    model = xgb.train(xgb_params, d_train, num_boost_round = 1300, evals=watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
+    model = xgb.train(xgb_params, d_train, 1250, watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
                       verbose_eval=False)
     print("prediction...")
     pred0 = model.predict(d_train_all, ntree_limit=model.best_ntree_limit)
@@ -190,9 +189,86 @@ print ('=====================')
 submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 submission.y = prediction0
-submission.columns = ['ID', 'pred_model_1_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_1_xgb_decomp_pred_insample.csv', index=False)
+submission.columns = ['ID', 'pred_model_4_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_4_xgb_decomp_pred_insample.csv', index=False)
 
 submission.y = prediction1
-submission.columns = ['ID', 'pred_model_1_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_1_xgb_decomp_pred_layer1_test.csv', index=False)
+submission.columns = ['ID', 'pred_model_4_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_4_xgb_decomp_pred_layer1_test.csv', index=False)
+
+"""""
+
+"""""
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.model_selection import GridSearchCV
+from sklearn.svm import SVC
+from sklearn.datasets import load_iris
+from sklearn.decomposition import PCA
+from sklearn.feature_selection import SelectKBest
+from sklearn.svm import SVR
+
+train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
+
+# process columns, apply LabelEncoder to categorical features
+print("process columns, apply LabelEncoder to categorical features...")
+for c in train.columns:
+    if train[c].dtype == 'object':
+        lbl = LabelEncoder()
+        lbl.fit(list(train[c].values) + list(test[c].values))
+        train[c] = lbl.transform(list(train[c].values))
+        test[c] = lbl.transform(list(test[c].values))
+
+train = train.loc[:,train.apply(pd.Series.nunique) != 1]
+test  = test[train.drop(["y"], axis=1).columns]
+
+X = train.drop(["y"], axis=1)
+X = X.drop(["ID"], axis=1)
+X = X.as_matrix()
+S = test.drop(["ID"], axis=1)
+S = S.as_matrix()
+y = y_train
+
+
+# This dataset is way too high-dimensional. Better do PCA:
+pca = PCA(n_components=12)
+
+# Maybe some original features where good, too?
+selection = SelectKBest(k=1)
+
+# Build estimator from PCA and Univariate selection:
+
+combined_features = FeatureUnion([("pca", pca), ("univ_select", selection)])
+
+# Use combined features to transform dataset:
+X_features = combined_features.fit(X, y).transform(X)
+
+svm = SVR(kernel="linear")
+
+# Do grid search over k, n_components and C:
+
+pipeline = Pipeline([("features", combined_features), ("svm", svm)])
+
+#param_grid = dict(features__pca__n_components=[1, 2, 8, 12, 16],
+#                  features__univ_select__k=[1, 2,15, 50, 100, 300],
+#                  svm__C=[0.1, 1, 10])
+
+param_grid = dict(features__pca__n_components=[15,16,17],
+                  features__univ_select__k=[80, 100, 120],
+                  svm__C=[1, 2])
+
+grid_search = GridSearchCV(pipeline, param_grid=param_grid, verbose=10)
+grid_search.fit(X, y)
+print(grid_search.best_estimator_) # 0.526365232922
+
+grid_pred = grid_search.predict(S)
+
+submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
+
+submission.y = grid_search.predict
+submission.columns = ['ID', 'pred_model_4_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_4_xgb_decomp_pred_insample.csv', index=False)
+
+submission.y = grid_pred
+submission.columns = ['ID', 'pred_model_4_xgb_decomp']
+submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_4_xgb_decomp_pred_layer1_test.csv', index=False)
