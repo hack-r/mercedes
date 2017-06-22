@@ -1,6 +1,5 @@
 import numpy as np
 import random
-from sklearn import neural_network
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 from sklearn.linear_model import LassoLarsCV, BayesianRidge, HuberRegressor, ElasticNetCV, Lasso, LassoCV, LassoLarsIC, \
     LinearRegression, RANSACRegressor, RidgeCV, OrthogonalMatchingPursuitCV
@@ -20,7 +19,7 @@ from sklearn.decomposition import PCA, FastICA, NMF
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import r2_score
 
-print('model_2_pipe: XGB + pipeline mix with grid searched GRP and SRP component numbers')
+print('model_2_pipe: XGB + pipeline mix with grid searched GRP and SRP component numbers + arules_group features')
 class StackingEstimator(BaseEstimator, TransformerMixin):
     def __init__(self, estimator):
         self.estimator = estimator
@@ -136,6 +135,10 @@ try:
             for i in range(1, n_srp + 1):
                 train['srp_' + str(i)] = srp_results_train[:, i - 1]
                 test['srp_' + str(i)] = srp_results_test[:, i - 1]
+
+            train['arules_group1'] = train.X194 + train.X187 + train.X85 + train.X283 + train.X154 + train.X374 + train.X321
+            train['arules_group2'] = train.X50  + train.X129 + train.X49 + train.X263 + train.X137 + train.X324 + train.X70  + train.X361 + train.X205 + train.X58 + train.X136 + train.X74
+            train['arules_group3'] = train.X161 + train.X202 + train.X45 + train.X377 + train.X356 + train.X186 + train.X362 + train.X334 + train.X133
 
             y_train0 = train['y'].values
             y_train = train['y'].values
@@ -270,7 +273,7 @@ except StopIteration:
     pass
 print("Loop complete.")
 
-sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_2_pipe_z7_j9.csv', index=False)
+sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_3_pipe.csv', index=False)
 
 ''''
         z     j    result
@@ -442,33 +445,3 @@ sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_2_pipe_z7_j9.cs
 
 '''
 
-# ====================
-# z is: 7
-# j is: 1
-# XGB CV R2 is: 0.467009824321
-# ====================
-# !!!!!!!!!!!!!!!!!!!!
-# FOUND AN IMPROVEMENT
-# !!!!!!!!!!!!!!!!!!!!
-# Loop complete.
-
-# In-sample R2 score for stacked_pipeline - BaggingRegressor:
-# 0.907594621374
-# In-sample R2 score for XGB:
-# 0.704475595565
-# In-sample R2 score for XGB*pipeline:
-# 0.744883581357
-# OOS XGB R2:
-# 0.460070920708
-# Public LB: 0.55490 (dart)
-
-# In-sample R2 score for stacked_pipeline - LassoLarsCV:
-# 0.605783396205
-# In-sample R2 score for XGB:
-# 0.704783904699
-# In-sample R2 score for XGB*pipeline:
-# 0.644203519786
-# OOS XGB R2:
-# 0.461514
-# Public LB: 0.55421 (gbtree)
-# Public LB: 0.55490 (dart)
