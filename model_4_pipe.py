@@ -1,6 +1,5 @@
 import numpy as np
 import random
-from sklearn import neural_network
 from sklearn.base import BaseEstimator, TransformerMixin, ClassifierMixin
 from sklearn.linear_model import LassoLarsCV, BayesianRidge, HuberRegressor, ElasticNetCV, Lasso, LassoCV, LassoLarsIC, \
     LinearRegression, RANSACRegressor, RidgeCV, OrthogonalMatchingPursuitCV
@@ -20,7 +19,7 @@ from sklearn.decomposition import PCA, FastICA, NMF
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import r2_score
 
-print('model_2_pipe: XGB + pipeline mix with grid searched GRP and NMF component numbers')
+print('model_3_pipe: XGB + pipeline mix with grid searched GRP and NMF component numbers + more stacking estimators')
 class StackingEstimator(BaseEstimator, TransformerMixin):
     def __init__(self, estimator):
         self.estimator = estimator
@@ -70,9 +69,9 @@ try:
 
             n_pca = 12
             n_ica = 12
-            n_nmf = 9 # j selected by grid
+            n_nmf = 7 # j selected by grid
             n_srp = 12
-            n_grp = 7 # z selected by grid
+            n_grp = 9 # z selected by grid
             n_tsvd = 12
             n_comp = 12
 
@@ -137,6 +136,19 @@ try:
                 train['srp_' + str(i)] = srp_results_train[:, i - 1]
                 test['srp_' + str(i)] = srp_results_test[:, i - 1]
 
+            '''
+            train['arules_group1'] = train.X194 + train.X187 + train.X85 + train.X283 + train.X154 + train.X374 + train.X321
+            train['arules_group2'] = train.X50  + train.X129 + train.X49 + train.X263 + train.X137 + train.X324 + train.X70  + train.X361 + train.X205 + train.X58 + train.X136 + train.X74
+            train['arules_group3'] = train.X161 + train.X202 + train.X45 + train.X377 + train.X356 + train.X186 + train.X362 + train.X334 + train.X133
+
+            test['arules_group1'] = test.X194 + test.X187 + test.X85 + test.X283 + test.X154 + test.X374 + test.X321
+            test['arules_group2'] = test.X50  + test.X129 + test.X49 + test.X263 + test.X137 + test.X324 + test.X70  + test.X361 + test.X205 + test.X58 + test.X136 + test.X74
+            test['arules_group3'] = test.X161 + test.X202 + test.X45 + test.X377 + test.X356 + test.X186 + test.X362 + test.X334 + test.X133
+            usable_columns.append('arules_group1')
+            usable_columns.append('arules_group2')
+            usable_columns.append('arules_group3')
+            '''
+
             y_train0 = train['y'].values
             y_train = train['y'].values
             y_mean = np.mean(y_train)
@@ -196,15 +208,15 @@ try:
                                                                       max_features=0.55,
                                                                       min_samples_leaf=18, min_samples_split=14,
                                                                       subsample=0.7)),
-                # StackingEstimator(estimator=BayesianRidge()),
-                # StackingEstimator(estimator=ElasticNetCV()),
-                # StackingEstimator(estimator=HuberRegressor()),
-                # StackingEstimator(estimator=LassoCV(eps=0.001, n_alphas=100, alphas=None, fit_intercept=True, normalize=True, precompute='auto', max_iter=1000, tol=0.0001, copy_X=True, cv=None, verbose=False, n_jobs=1, positive=False, random_state=None, selection='cyclic')),
-                # StackingEstimator(estimator=LassoLarsIC()),
-                # StackingEstimator(estimator=LinearRegression()),
-                # StackingEstimator(estimator=OrthogonalMatchingPursuitCV()),
-                # StackingEstimator(estimator=RANSACRegressor()),
-                # tackingEstimator(estimator=RidgeCV()),
+                 StackingEstimator(estimator=BayesianRidge()),
+                 StackingEstimator(estimator=ElasticNetCV()),
+                 StackingEstimator(estimator=HuberRegressor()),
+                 StackingEstimator(estimator=LassoCV(eps=0.001, n_alphas=100, alphas=None, fit_intercept=True, normalize=True, precompute='auto', max_iter=1000, tol=0.0001, copy_X=True, cv=None, verbose=False, n_jobs=1, positive=False, random_state=None, selection='cyclic')),
+                 StackingEstimator(estimator=LassoLarsIC()),
+                 StackingEstimator(estimator=LinearRegression()),
+                 StackingEstimator(estimator=OrthogonalMatchingPursuitCV()),
+                 StackingEstimator(estimator=RANSACRegressor()),
+                 StackingEstimator(estimator=RidgeCV()),
                 # LassoLarsCV()      # .6
                 # LinearRegression() # .6
                 # ElasticNetCV()     # worse
@@ -216,6 +228,7 @@ try:
                 # AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, n_estimators=300, random_state=1337) #0.641126381615
                 # RandomForestRegressor() # 0.902507869334
                 # neural_network.MLPRegressor() # 0.525858424976
+                StackingEstimator(estimator=AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, n_estimators=300, random_state=1337)),
                 StackingEstimator(estimator=BaggingRegressor()),
                 StackingEstimator(estimator=RandomForestRegressor()),
                 LinearRegression()
@@ -270,205 +283,5 @@ except StopIteration:
     pass
 print("Loop complete.")
 
-sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_2_pipe_z7_j9.csv', index=False)
 
-''''
-        z     j    result
-0     1.0   1.0  0.587395
-1     1.0   2.0  0.591534
-2     1.0   3.0  0.597348
-3     1.0   4.0  0.593319
-4     1.0   5.0  0.590310
-5     1.0   6.0  0.585636
-6     1.0   7.0  0.583412
-7     1.0   8.0  0.584774
-8     1.0   9.0  0.589830
-9     1.0  10.0  0.587744
-10    1.0  11.0  0.588443
-11    1.0  12.0  0.587529
-12    1.0  13.0  0.587225
-13    2.0   1.0  0.585901
-14    2.0   2.0  0.586827
-15    2.0   3.0  0.592907
-16    2.0   4.0  0.582703
-17    2.0   5.0  0.586048
-18    2.0   6.0  0.588807
-19    2.0   7.0  0.587712
-20    2.0   8.0  0.590462
-21    2.0   9.0  0.589804
-22    2.0  10.0  0.586513
-23    2.0  11.0  0.586028
-24    2.0  12.0  0.591500
-25    2.0  13.0  0.586457
-26    3.0   1.0  0.592215
-27    3.0   2.0  0.593925
-28    3.0   3.0  0.592577
-29    3.0   4.0  0.595095
-30    3.0   5.0  0.590277
-31    3.0   6.0  0.591223
-32    3.0   7.0  0.592692
-33    3.0   8.0  0.593817
-34    3.0   9.0  0.593539
-35    3.0  10.0  0.589362
-36    3.0  11.0  0.581420
-37    3.0  12.0  0.577195
-38    3.0  13.0  0.589433
-39    4.0   1.0  0.590442
-40    4.0   2.0  0.591725
-41    4.0   3.0  0.595632
-42    4.0   4.0  0.592563
-43    4.0   5.0  0.592840
-44    4.0   6.0  0.590825
-45    4.0   7.0  0.591118
-46    4.0   8.0  0.575833
-47    4.0   9.0  0.591736
-48    4.0  10.0  0.593664
-49    4.0  11.0  0.593659
-50    4.0  12.0  0.591913
-51    4.0  13.0  0.589652
-52    5.0   1.0  0.598556
-53    5.0   2.0  0.595128
-54    5.0   3.0  0.590136
-55    5.0   4.0  0.599283
-56    5.0   5.0  0.589120
-57    5.0   6.0  0.599005
-58    5.0   7.0  0.591632
-59    5.0   8.0  0.597036
-60    5.0   9.0  0.598218
-61    5.0  10.0  0.598894
-62    5.0  11.0  0.592886
-63    5.0  12.0  0.594538
-64    5.0  13.0  0.590959
-65    6.0   1.0  0.598111
-66    6.0   2.0  0.597659
-67    6.0   3.0  0.591022
-68    6.0   4.0  0.595900
-69    6.0   5.0  0.592123
-70    6.0   6.0  0.589873
-71    6.0   7.0  0.594118
-72    6.0   8.0  0.592605
-73    6.0   9.0  0.589140
-74    6.0  10.0  0.596316
-75    6.0  11.0  0.593051
-76    6.0  12.0  0.596085
-77    6.0  13.0  0.592752
-78    7.0   1.0  0.592620
-79    7.0   2.0  0.585939
-80    7.0   3.0  0.592023
-81    7.0   4.0  0.592972
-82    7.0   5.0  0.589794
-83    7.0   6.0  0.580928
-84    7.0   7.0  0.586601
-85    7.0   8.0  0.582688
-86    7.0   9.0  0.601559
-87    7.0  10.0  0.594403
-88    7.0  11.0  0.584443
-89    7.0  12.0  0.581602
-90    7.0  13.0  0.593835
-91    8.0   1.0  0.595219
-92    8.0   2.0  0.591671
-93    8.0   3.0  0.588403
-94    8.0   4.0  0.588367
-95    8.0   5.0  0.586944
-96    8.0   6.0  0.586385
-97    8.0   7.0  0.594540
-98    8.0   8.0  0.595327
-99    8.0   9.0  0.594090
-100   8.0  10.0  0.594295
-101   8.0  11.0  0.596218
-102   8.0  12.0  0.592942
-103   8.0  13.0  0.592502
-104   9.0   1.0  0.593750
-105   9.0   2.0  0.592708
-106   9.0   3.0  0.592553
-107   9.0   4.0  0.594064
-108   9.0   5.0  0.593715
-109   9.0   6.0  0.596033
-110   9.0   7.0  0.590941
-111   9.0   8.0  0.589900
-112   9.0   9.0  0.594337
-113   9.0  10.0  0.595513
-114   9.0  11.0  0.592384
-115   9.0  12.0  0.595564
-116   9.0  13.0  0.590100
-117  10.0   1.0  0.590577
-118  10.0   2.0  0.582133
-119  10.0   3.0  0.582566
-120  10.0   4.0  0.583805
-121  10.0   5.0  0.581330
-122  10.0   6.0  0.589945
-123  10.0   7.0  0.588974
-124  10.0   8.0  0.587671
-125  10.0   9.0  0.590102
-126  10.0  10.0  0.586659
-127  10.0  11.0  0.588510
-128  10.0  12.0  0.588395
-129  10.0  13.0  0.584210
-130  11.0   1.0  0.585317
-131  11.0   2.0  0.586250
-132  11.0   3.0  0.583454
-133  11.0   4.0  0.584590
-134  11.0   5.0  0.586854
-135  11.0   6.0  0.581327
-136  11.0   7.0  0.587318
-137  11.0   8.0  0.588069
-138  11.0   9.0  0.584986
-139  11.0  10.0  0.590148
-140  11.0  11.0  0.585858
-141  11.0  12.0  0.590645
-142  11.0  13.0  0.597686
-143  12.0   1.0  0.594649
-144  12.0   2.0  0.591902
-145  12.0   3.0  0.594242
-146  12.0   4.0  0.588924
-147  12.0   5.0  0.590712
-148  12.0   6.0  0.594416
-149  12.0   7.0  0.592806
-150  12.0   8.0  0.593347
-151  12.0   9.0  0.595499
-152  12.0  10.0  0.587517
-153  12.0  11.0  0.592177
-154  12.0  12.0  0.589230
-155  12.0  13.0  0.590755
-156  13.0   1.0  0.588781
-157  13.0   2.0  0.587825
-158  13.0   3.0  0.585549
-159  13.0   4.0  0.585948
-160  13.0   5.0  0.588874
-161  13.0   6.0  0.588037
-162  13.0   7.0  0.588743
-163  13.0   8.0  0.590834
-164  13.0   9.0  0.590891
-
-'''
-
-# ====================
-# z is: 7
-# j is: 1
-# XGB CV R2 is: 0.467009824321
-# ====================
-# !!!!!!!!!!!!!!!!!!!!
-# FOUND AN IMPROVEMENT
-# !!!!!!!!!!!!!!!!!!!!
-# Loop complete.
-
-# In-sample R2 score for stacked_pipeline - BaggingRegressor:
-# 0.907594621374
-# In-sample R2 score for XGB:
-# 0.704475595565
-# In-sample R2 score for XGB*pipeline:
-# 0.744883581357
-# OOS XGB R2:
-# 0.460070920708
-# Public LB: 0.55490 (dart)
-
-# In-sample R2 score for stacked_pipeline - LassoLarsCV:
-# 0.605783396205
-# In-sample R2 score for XGB:
-# 0.704783904699
-# In-sample R2 score for XGB*pipeline:
-# 0.644203519786
-# OOS XGB R2:
-# 0.461514
-# Public LB: 0.55421 (gbtree)
-# Public LB: 0.55490 (dart)
+sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_4_pipe.csv', index=False)

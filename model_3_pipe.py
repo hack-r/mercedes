@@ -19,7 +19,7 @@ from sklearn.decomposition import PCA, FastICA, NMF
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import r2_score
 
-print('model_2_pipe: XGB + pipeline mix with grid searched GRP and SRP component numbers + arules_group features')
+print('model_3_pipe: XGB + pipeline mix with grid searched GRP and NMF component numbers + arules_group features')
 class StackingEstimator(BaseEstimator, TransformerMixin):
     def __init__(self, estimator):
         self.estimator = estimator
@@ -69,9 +69,9 @@ try:
 
             n_pca = 12
             n_ica = 12
-            n_nmf = 9 # j selected by grid
+            n_nmf = 7 # j selected by grid
             n_srp = 12
-            n_grp = 7 # z selected by grid
+            n_grp = 9 # z selected by grid
             n_tsvd = 12
             n_comp = 12
 
@@ -136,9 +136,18 @@ try:
                 train['srp_' + str(i)] = srp_results_train[:, i - 1]
                 test['srp_' + str(i)] = srp_results_test[:, i - 1]
 
+
             train['arules_group1'] = train.X194 + train.X187 + train.X85 + train.X283 + train.X154 + train.X374 + train.X321
             train['arules_group2'] = train.X50  + train.X129 + train.X49 + train.X263 + train.X137 + train.X324 + train.X70  + train.X361 + train.X205 + train.X58 + train.X136 + train.X74
             train['arules_group3'] = train.X161 + train.X202 + train.X45 + train.X377 + train.X356 + train.X186 + train.X362 + train.X334 + train.X133
+
+            test['arules_group1'] = test.X194 + test.X187 + test.X85 + test.X283 + test.X154 + test.X374 + test.X321
+            test['arules_group2'] = test.X50  + test.X129 + test.X49 + test.X263 + test.X137 + test.X324 + test.X70  + test.X361 + test.X205 + test.X58 + test.X136 + test.X74
+            test['arules_group3'] = test.X161 + test.X202 + test.X45 + test.X377 + test.X356 + test.X186 + test.X362 + test.X334 + test.X133
+            usable_columns.append('arules_group1')
+            usable_columns.append('arules_group2')
+            usable_columns.append('arules_group3')
+
 
             y_train0 = train['y'].values
             y_train = train['y'].values
@@ -273,6 +282,7 @@ except StopIteration:
     pass
 print("Loop complete.")
 
+# CV R2 improvement of .00017492035099997416
 sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_3_pipe.csv', index=False)
 
 ''''
