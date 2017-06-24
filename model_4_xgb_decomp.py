@@ -22,12 +22,14 @@ def xgb_r2_score(preds, dtrain):
 
 random.seed(1337)
 
-print("Model 0 XGB: Dart XGB with Decomp, 12 comps")
+print("Model 4 XGB: Dart XGB with Decomp, grid selected comps, neutonian feat")
 
 # read datasets
 print("read datasets...")
 train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
 test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
+train_clean1 = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+test_clean1 = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 
 # process columns, apply LabelEncoder to categorical features
 print("process columns, apply LabelEncoder to categorical features...")
@@ -46,20 +48,18 @@ print("Add decomposed components: PCA / ICA etc...")
 
 n_pca  = 12
 n_ica  = 12
-n_nmf  = 12
+n_nmf  = 7
 n_srp  = 12
-n_grp  = 12
+n_grp  = 9
 n_tsvd = 12
 n_comp = 12
 
 # NMF
-"""""
 nmf = NMF(alpha=0.0, beta=1, eta=0.1, init='random', l1_ratio=0.0, max_iter=200,
   n_components=n_nmf, nls_max_iter=2000, random_state=0, shuffle=False,
   solver='cd', sparseness=None, tol=0.0001, verbose=0)
 nmf2_results_train = nmf.fit_transform(train.drop(["y"], axis=1).abs())
 nmf2_results_test = nmf.transform(test.abs())
-"""""
 
 # tSVD
 tsvd = TruncatedSVD(n_components=n_tsvd, random_state=42)
@@ -98,10 +98,10 @@ for i in range(1, n_ica + 1):
     train['ica_' + str(i)] = ica2_results_train[:, i - 1]
     test['ica_' + str(i)] = ica2_results_test[:, i - 1]
 
-#print("Append NMF components to datasets...")
-#for i in range(1, n_nmf + 1):
-#    train['nmf_' + str(i)] = nmf2_results_train[:, i - 1]
-#    test['nmf_' + str(i)] = nmf2_results_test[:, i - 1]
+print("Append NMF components to datasets...")
+for i in range(1, n_nmf + 1):
+    train['nmf_' + str(i)] = nmf2_results_train[:, i - 1]
+    test['nmf_' + str(i)] = nmf2_results_test[:, i - 1]
 
 print("Append GRP components to datasets...")
 for i in range(1, n_grp + 1):
@@ -112,6 +112,13 @@ print("Append SRP components to datasets...")
 for i in range(1, n_srp + 1):
     train['srp_' + str(i)] = srp_results_train[:, i - 1]
     test['srp_' + str(i)] = srp_results_test[:, i - 1]
+
+train['X5_n'] = np.where(train_clean1['X5'] == 'n', 1, 0)
+test['X5_n'] = np.where(test_clean1['X5'] == 'n', 1, 0)
+train['X5_w'] = np.where(train_clean1['X5'] == 'w', 1, 0)
+test['X5_w'] = np.where(test_clean1['X5'] == 'w', 1, 0)
+train['neutonian'] = 66.5386547916928 + train.X5_n + 25.4051960894959 * train.X263 + 7.89681427726105 * train.X47 + 4.84424759927184 * train.X222 + (1.39519609054033 + train.X119) / (0.123227966633056 + train.X127) - train.X5_w
+test['neutonian'] = 66.5386547916928 + test.X5_n + 25.4051960894959 * test.X263 + 7.89681427726105 * test.X47 + 4.84424759927184 * test.X222 + (1.39519609054033 + test.X119) / (0.123227966633056 + test.X127) - test.X5_w
 
 y_train = train["y"]
 y_mean = np.mean(y_train)
@@ -165,7 +172,7 @@ for fold, (train_index, test_index) in enumerate(kf.split(X)):
     watchlist = [(d_train, 'train'), (d_valid, 'valid')]
 
     print("training model...")
-    model = xgb.train(xgb_params, d_train, 1250, watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
+    model = xgb.train(xgb_params, d_train, 1000, watchlist, early_stopping_rounds=50, feval=xgb_r2_score, maximize=True,
                       verbose_eval=False)
     print("prediction...")
     pred0 = model.predict(d_train_all, ntree_limit=model.best_ntree_limit)
@@ -197,78 +204,9 @@ submission.columns = ['ID', 'pred_model_4_xgb_decomp']
 submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_4_xgb_decomp_pred_layer1_test.csv', index=False)
 
 """""
-
+=====================
+Final Score 0.436651
+Final Out-of-Fold Score 0.435512
+=====================
+PUBLIC LB:  -0.31744
 """""
-from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.model_selection import GridSearchCV
-from sklearn.svm import SVC
-from sklearn.datasets import load_iris
-from sklearn.decomposition import PCA
-from sklearn.feature_selection import SelectKBest
-from sklearn.svm import SVR
-
-train = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
-test  = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
-
-# process columns, apply LabelEncoder to categorical features
-print("process columns, apply LabelEncoder to categorical features...")
-for c in train.columns:
-    if train[c].dtype == 'object':
-        lbl = LabelEncoder()
-        lbl.fit(list(train[c].values) + list(test[c].values))
-        train[c] = lbl.transform(list(train[c].values))
-        test[c] = lbl.transform(list(test[c].values))
-
-train = train.loc[:,train.apply(pd.Series.nunique) != 1]
-test  = test[train.drop(["y"], axis=1).columns]
-
-X = train.drop(["y"], axis=1)
-X = X.drop(["ID"], axis=1)
-X = X.as_matrix()
-S = test.drop(["ID"], axis=1)
-S = S.as_matrix()
-y = y_train
-
-
-# This dataset is way too high-dimensional. Better do PCA:
-pca = PCA(n_components=12)
-
-# Maybe some original features where good, too?
-selection = SelectKBest(k=1)
-
-# Build estimator from PCA and Univariate selection:
-
-combined_features = FeatureUnion([("pca", pca), ("univ_select", selection)])
-
-# Use combined features to transform dataset:
-X_features = combined_features.fit(X, y).transform(X)
-
-svm = SVR(kernel="linear")
-
-# Do grid search over k, n_components and C:
-
-pipeline = Pipeline([("features", combined_features), ("svm", svm)])
-
-#param_grid = dict(features__pca__n_components=[1, 2, 8, 12, 16],
-#                  features__univ_select__k=[1, 2,15, 50, 100, 300],
-#                  svm__C=[0.1, 1, 10])
-
-param_grid = dict(features__pca__n_components=[15,16,17],
-                  features__univ_select__k=[80, 100, 120],
-                  svm__C=[1, 2])
-
-grid_search = GridSearchCV(pipeline, param_grid=param_grid, verbose=10)
-grid_search.fit(X, y)
-print(grid_search.best_estimator_) # 0.526365232922
-
-grid_pred = grid_search.predict(S)
-
-submission = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
-
-submission.y = grid_search.predict
-submission.columns = ['ID', 'pred_model_4_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/insample/model_4_xgb_decomp_pred_insample.csv', index=False)
-
-submission.y = grid_pred
-submission.columns = ['ID', 'pred_model_4_xgb_decomp']
-submission.to_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/layer1_test/model_4_xgb_decomp_pred_layer1_test.csv', index=False)

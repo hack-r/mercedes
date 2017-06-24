@@ -19,7 +19,7 @@ from sklearn.decomposition import PCA, FastICA, NMF
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import r2_score
 
-print('model_3_pipe: XGB + pipeline mix with grid searched GRP and NMF component numbers + more stacking estimators')
+print('model_5_pipe: XGB + pipeline mix with grid searched GRP and NMF component numbers + neutonian features')
 class StackingEstimator(BaseEstimator, TransformerMixin):
     def __init__(self, estimator):
         self.estimator = estimator
@@ -45,6 +45,8 @@ class StackingEstimator(BaseEstimator, TransformerMixin):
 print("read datasets...")
 train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
 test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
+train_clean1 = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+test_clean1 = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 samp = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
 for c in train_clean.columns:
@@ -136,18 +138,14 @@ try:
                 train['srp_' + str(i)] = srp_results_train[:, i - 1]
                 test['srp_' + str(i)] = srp_results_test[:, i - 1]
 
-            '''
-            train['arules_group1'] = train.X194 + train.X187 + train.X85 + train.X283 + train.X154 + train.X374 + train.X321
-            train['arules_group2'] = train.X50  + train.X129 + train.X49 + train.X263 + train.X137 + train.X324 + train.X70  + train.X361 + train.X205 + train.X58 + train.X136 + train.X74
-            train['arules_group3'] = train.X161 + train.X202 + train.X45 + train.X377 + train.X356 + train.X186 + train.X362 + train.X334 + train.X133
 
-            test['arules_group1'] = test.X194 + test.X187 + test.X85 + test.X283 + test.X154 + test.X374 + test.X321
-            test['arules_group2'] = test.X50  + test.X129 + test.X49 + test.X263 + test.X137 + test.X324 + test.X70  + test.X361 + test.X205 + test.X58 + test.X136 + test.X74
-            test['arules_group3'] = test.X161 + test.X202 + test.X45 + test.X377 + test.X356 + test.X186 + test.X362 + test.X334 + test.X133
-            usable_columns.append('arules_group1')
-            usable_columns.append('arules_group2')
-            usable_columns.append('arules_group3')
-            '''
+            train['X5_n'] = np.where(train_clean1['X5'] == 'n', 1, 0)
+            test['X5_n']  = np.where(test_clean1['X5'] == 'n', 1, 0)
+            train['X5_w'] = np.where(train_clean1['X5'] == 'w', 1, 0)
+            test['X5_w']  = np.where(test_clean1['X5'] == 'w', 1, 0)
+            train['neutonian'] = 66.5386547916928 + train.X5_n + 25.4051960894959*train.X263 + 7.89681427726105*train.X47 + 4.84424759927184*train.X222 + (1.39519609054033 + train.X119)/(0.123227966633056 + train.X127) - train.X5_w
+            test['neutonian'] = 66.5386547916928 + test.X5_n + 25.4051960894959*test.X263 + 7.89681427726105*test.X47 + 4.84424759927184*test.X222 + (1.39519609054033 + test.X119)/(0.123227966633056 + test.X127) - test.X5_w
+            usable_columns.append('neutonian')
 
             y_train0 = train['y'].values
             y_train = train['y'].values
@@ -208,15 +206,15 @@ try:
                                                                       max_features=0.55,
                                                                       min_samples_leaf=18, min_samples_split=14,
                                                                       subsample=0.7)),
-                 StackingEstimator(estimator=BayesianRidge()),
-                 StackingEstimator(estimator=ElasticNetCV()),
-                 StackingEstimator(estimator=HuberRegressor()),
-                 StackingEstimator(estimator=LassoCV(eps=0.001, n_alphas=100, alphas=None, fit_intercept=True, normalize=True, precompute='auto', max_iter=1000, tol=0.0001, copy_X=True, cv=None, verbose=False, n_jobs=1, positive=False, random_state=None, selection='cyclic')),
-                 StackingEstimator(estimator=LassoLarsIC()),
-                 StackingEstimator(estimator=LinearRegression()),
-                 StackingEstimator(estimator=OrthogonalMatchingPursuitCV()),
-                 StackingEstimator(estimator=RANSACRegressor()),
-                 StackingEstimator(estimator=RidgeCV()),
+                # StackingEstimator(estimator=BayesianRidge()),
+                # StackingEstimator(estimator=ElasticNetCV()),
+                # StackingEstimator(estimator=HuberRegressor()),
+                # StackingEstimator(estimator=LassoCV(eps=0.001, n_alphas=100, alphas=None, fit_intercept=True, normalize=True, precompute='auto', max_iter=1000, tol=0.0001, copy_X=True, cv=None, verbose=False, n_jobs=1, positive=False, random_state=None, selection='cyclic')),
+                # StackingEstimator(estimator=LassoLarsIC()),
+                # StackingEstimator(estimator=LinearRegression()),
+                # StackingEstimator(estimator=OrthogonalMatchingPursuitCV()),
+                # StackingEstimator(estimator=RANSACRegressor()),
+                # tackingEstimator(estimator=RidgeCV()),
                 # LassoLarsCV()      # .6
                 # LinearRegression() # .6
                 # ElasticNetCV()     # worse
@@ -228,7 +226,6 @@ try:
                 # AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, n_estimators=300, random_state=1337) #0.641126381615
                 # RandomForestRegressor() # 0.902507869334
                 # neural_network.MLPRegressor() # 0.525858424976
-                StackingEstimator(estimator=AdaBoostRegressor(DecisionTreeRegressor(max_depth=5), learning_rate=.01, n_estimators=300, random_state=1337)),
                 StackingEstimator(estimator=BaggingRegressor()),
                 StackingEstimator(estimator=RandomForestRegressor()),
                 LinearRegression()
@@ -268,7 +265,7 @@ try:
             print("====================")
             print("z is:", z)
             print("j is:", j)
-            print("XGB CV R2 is:", r2) # claims 0.587890871135 but did very poorly in stacking
+            print("XGB CV R2 is:", r2) # claims 0.593660737624 public LB 0.54793
             print("====================")
 
             result.loc[len(result)] = [z, j, r2]
@@ -283,5 +280,6 @@ except StopIteration:
     pass
 print("Loop complete.")
 
-
-sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_4_pipe.csv', index=False)
+# CV R2 improvement of
+sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_5_pipe.csv', index=False)
+print("Wrote out file.")

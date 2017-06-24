@@ -6,38 +6,13 @@ pacman::p_load(car, caret, data.table, dplyr, lightgbm,
                Matrix, mctest, Metrics, mlbench, MLmetrics, mlr, RRF,
                stringr, sqldf, xgboost)
 
-# Stack -------------------------------------------------------------------
-sample <- fread("sample_submission.csv")
-
-my_kernel_dart <- fread("jason.csv")
-my_priv_dart   <- fread("xgb_12pca_12ica_1grp_8srp_py_500tr_dart.csv")
-#questionable   <- fread("..//baseLine.csv")
-questionable2  <- fread("stacked-models.csv")
-questionable3  <- fread("questionable3.csv")
-sample$y <- my_kernel_dart$y * .38 + my_priv_dart$y * .10 + questionable3$y * .52
-
-fwrite(sample, "..//output//stack_mykerneldart38_cvdart10_questionable3_52.csv")
-
-# stack_mykerneldart38_cvdart05_questionable3_57  LB 0.56859
-# stack_mykerneldart38_cvdart10_questionable3_55  LB 0.56859
-# stack_mykerneldart38_cvdart10_questionable3_52  LB 0.56859
-# stack_mykerneldart40_cvdart05_questionable3_55  LB 0.56859
-# stack_mykerneldart35_cvdart10_questionable3_55  LB 0.56857
-# stack_mykerneldart34_cvdart09_questionable3_57  LB 0.56857
-# stack_mykerneldart38_cvdart02_questionable3_60  LB 0.56856
-# stack_mykerneldart33_cvdart02_questionable3_65  LB 0.56854
-# stack_mykerneldart40_cvdart0_questionable3_60   LB 0.56852
-# stack_mykerneldart28_cvdart02_questionable3_70  LB 0.56851
-# stack_mykerneldart28_cvdart02_questionable2_70  LB 0.56848
-# stack_mykerneldart20_cvdart02_questionable3_78  LB 0.56841
-# stack_mykerneldart28_cvdart02_questionable70    LB 0.56815
-# stack_mykerneldart38_cvdart02_questionable60    LB 0.56814
-# stack_mykerneldart08_cvdart02_questionable2_90  LB 0.56813
-# stack_mykerneldart48_cvdart02_questionable50    LB 0.56808
-# stack_mykerneldart005_cvdart005_questionable3_99   0.56798
-# 100% questionable2                                 0.56793
 
 # Functions ---------------------------------------------------------------
+consec <- function(ex){
+  r<-rle(ex)
+  max(r$length[r$values == 1])
+}
+
 
 R2gauss<- function(y,model){
   moy<-mean(y)
@@ -107,7 +82,10 @@ train <- as.data.frame(train)
 test  <- as.data.frame(test)
 
 # EDA ---------------------------------------------------------------------
-
+plot(density(questionable3$y))
+lines(density(model_2_xgb_d$pred_MODELNUMBER_xgb),col="green")
+lines(density(model_0_xgb_d$pred_model_0_xgb_decomp),col="red")
+lines(density(train$y),col="blue")
 
 # FE ----------------------------------------------------------------------
 ##### Removing constant features
