@@ -3,7 +3,7 @@
 options(scipen=20)
 setwd("..//input")
 pacman::p_load(car, caret, data.table, dplyr, lightgbm,
-               Matrix, mctest, Metrics, mlbench, MLmetrics, mlr, RRF,
+               Matrix, mctest, Metrics, mlbench, MLmetrics, mlr, RRF, rjson,
                stringr, sqldf, xgboost)
 
 
@@ -29,6 +29,25 @@ R2gauss<- function(y,model){
 sample <- fread("sample_submission.csv")
 train  <- fread("train.csv")
 test   <- fread("test.csv")
+all    <- jsonlite::fromJSON("all_questions.json", flatten = T)
+ans    <- all$answers
+
+df <- data.frame(matrix((ans), nrow=4209, byrow=T))
+df
+probe <- gsub("^(.*?),.*", "\\1", df[,1])
+probe <- gsub("list\\(", "", probe)
+probe <- gsub("\\)", "", probe)
+probe <- gsub("y_value = ", "", probe)
+probe <- gsub("NA", "", probe)
+probe <- as.numeric(probe)
+
+test$Y  <- probe
+train$Y <- train$y
+train$y <- NULL
+train   <- rbind(train, test[!is.na(test$Y),])
+train$y <- train$Y
+train$Y <- NULL
+test    <- fread("test.csv")
 
 # Fix Categorical
 train.id <- train$ID

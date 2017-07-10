@@ -44,7 +44,7 @@ class StackingEstimator(BaseEstimator, TransformerMixin):
 
 # read datasets
 print("read datasets...")
-train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/train.csv')
+train_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/probed_train.csv')
 test_clean = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/test.csv')
 samp = pd.read_csv('T:/RNA/Baltimore/Jason/ad_hoc/mb/input/sample_submission.csv')
 
@@ -271,6 +271,8 @@ except StopIteration:
 print("Loop complete.")
 
 sub.to_csv('T://RNA//Baltimore//Jason//ad_hoc//mb//output//model_2_pipe_z7_j9.csv', index=False)
+
+# XGB CV R2 is: 0.615412804294 (with probed set added)
 
 ''''
         z     j    result

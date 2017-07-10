@@ -223,6 +223,230 @@ plot(density(pred7))
 sample$y <- pred7
 fwrite(sample, "..//output//ranger_mod7.csv")
 
+
+# Caret ens / xgb  --------------------------------------------------------
+sample <- fread("sample_submission.csv")
+train  <- fread("train.csv")
+test   <- fread("test.csv")
+
+cat("\n## Removing the constants features.\n")
+for (f in names(train)) {
+  if (length(unique(train[[f]])) == 1) {
+    cat(f, "is constant in train. We delete it.\n")
+    train[[f]] <- NULL
+    test[[f]] <- NULL
+  }
+}
+
+# Fix Categorical
+train.id <- train$ID
+test.id  <- test$ID
+labels   <- as.numeric(train$y)
+train$ID <- NULL
+train$y  <- NULL
+test$ID  <- NULL
+
+
+train$X0 <- ifelse(train$X0 %in% intersect(unique(train$X0), unique(test$X0)),train$X0, NA)
+test$X0  <- ifelse(test$X0 %in% intersect(unique(train$X0), unique(test$X0)),test$X0, NA)
+train$X0 <- ifelse(is.na(train$X0), "other", train$X0)
+test$X0  <- ifelse(is.na(test$X0), "other", test$X0)
+
+train$X1 <- ifelse(train$X1 %in% intersect(unique(train$X1), unique(test$X1)),train$X1, NA)
+test$X1  <- ifelse(test$X1 %in% intersect(unique(train$X1), unique(test$X1)),test$X1, NA)
+train$X1 <- ifelse(is.na(train$X1), "other", train$X1)
+test$X1  <- ifelse(is.na(test$X1), "other", test$X1)
+
+train$X2 <- ifelse(train$X2 %in% intersect(unique(train$X2), unique(test$X2)),train$X2, NA)
+test$X2  <- ifelse(test$X2 %in% intersect(unique(train$X2), unique(test$X2)),test$X2, NA)
+train$X2 <- ifelse(is.na(train$X2), "other", train$X2)
+test$X2  <- ifelse(is.na(test$X2), "other", test$X2)
+
+train$X3 <- ifelse(train$X3 %in% intersect(unique(train$X3), unique(test$X3)),train$X3, NA)
+test$X3  <- ifelse(test$X3 %in% intersect(unique(train$X3), unique(test$X3)),test$X3, NA)
+train$X3 <- ifelse(is.na(train$X3), "other", train$X3)
+test$X3  <- ifelse(is.na(test$X3), "other", test$X3)
+
+train$X4 <- ifelse(train$X4 %in% intersect(unique(train$X4), unique(test$X4)),train$X4, NA)
+test$X4  <- ifelse(test$X4 %in% intersect(unique(train$X4), unique(test$X4)),test$X4, NA)
+train$X4 <- ifelse(is.na(train$X4), "other", train$X4)
+test$X4  <- ifelse(is.na(test$X4), "other", test$X4)
+
+train$X5 <- ifelse(train$X5 %in% intersect(unique(train$X5), unique(test$X5)),train$X5, NA)
+test$X5  <- ifelse(test$X5 %in% intersect(unique(train$X5), unique(test$X5)),test$X5, NA)
+train$X5 <- ifelse(is.na(train$X5), "other", train$X5)
+test$X5  <- ifelse(is.na(test$X5), "other", test$X5)
+
+train$X6 <- ifelse(train$X6 %in% intersect(unique(train$X6), unique(test$X6)),train$X6, NA)
+test$X6  <- ifelse(test$X6 %in% intersect(unique(train$X6), unique(test$X6)),test$X6, NA)
+train$X6 <- ifelse(is.na(train$X6), "other", train$X6)
+test$X6  <- ifelse(is.na(test$X6), "other", test$X6)
+
+train$X8 <- ifelse(train$X8 %in% intersect(unique(train$X8), unique(test$X8)),train$X8, NA)
+test$X8  <- ifelse(test$X8 %in% intersect(unique(train$X8), unique(test$X8)),test$X8, NA)
+train$X8 <- ifelse(is.na(train$X8), "other", train$X8)
+test$X8  <- ifelse(is.na(test$X8), "other", test$X8)
+
+train <- as.data.frame(train)
+test  <- as.data.frame(test)
+
+for(i in 1:8){
+  train[,i] <- as.factor(train[,i])
+  test[,i]  <- as.factor(test[,i])
+}
+
+train$y <- labels
+
+
+set.seed(100)
+myfolds <- createMultiFolds(train$y, k = 5, times = 10)
+control <- trainControl("repeatedcv", index = myfolds, selectionFunction = "oneSE")
+control$verboseIter<-T
+
+train$flag_sum <- rowSums(train[,9:(ncol(train)-1)])
+test$flag_sum  <- rowSums(test[,9:(ncol(test))])
+
+consec <- function(ex){
+  r<-rle(ex)
+  max(r$length[r$values == 1])
+}
+
+train$consec <- apply(train,1,consec)
+test$consec  <- apply(test,1,consec)
+
+#tmp <- train[,!colnames(train) %in% c("y")]
+#tmp <- tmp[,9:ncol(tmp)]
+#train$row_means  <- rowMeans(tmp)
+#train$row_means2 <- log(train$row_means)
+#train$x5x2       <- paste0(train$X5, train$X3)
+
+tg <- data.frame(nrounds = c(200, 1000),
+                max_depth = c(4,8),
+                eta = .02,
+                gamma = c(.01),
+                colsample_bytree = 1,
+                min_child_weight = 1,
+                subsample = .5)
+
+xgbGrid <- expand.grid(
+  eta = 0.12,
+  nrounds = 400,
+  max_depth = 10,
+  gamma = 0,               #default=0
+  colsample_bytree = 1,    #default=1
+  min_child_weight = 1     #default=1
+)
+
+mod8 <- caret::train(y ~ ., data = train,
+                     method = "xgbTree",
+                     metric = "Rsquared",
+                     trControl = control,
+                     tuneGrid = tg,#xgbGrid, #tg
+                     preProc = c("zv","center","scale"))
+#Aggregating results
+#Selecting tuning parameters
+#Fitting nrounds = 200, max_depth = 4, eta = 0.02, gamma = 0.01, colsample_bytree = 1, min_child_weight = 1, subsample = 0.5 on full training se
+
+plot(mod8)
+mod8 # .5687911
+pred8 <- predict(mod8, as.data.frame(test)) #, type = "response"
+plot(density(pred8))
+summary(pred8)
+
+sample$y <- pred8
+fwrite(sample, "..//output//caret_mod8.csv")
+
+
+# Model 9  ----------------------------------------------------------------
+set.seed(100)
+myfolds <- createMultiFolds(train$y, k = 5, times = 2)
+control <- trainControl("repeatedcv", index = myfolds, selectionFunction = "oneSE")
+control$verboseIter<-T
+
+train$flag_sum <- rowSums(train[,9:(ncol(train)-1)])
+test$flag_sum  <- rowSums(test[,9:(ncol(test))])
+
+consec <- function(ex){
+  r<-rle(ex)
+  max(r$length[r$values == 1])
+}
+
+train$consec <- apply(train,1,consec)
+test$consec  <- apply(test,1,consec)
+
+tmp <- train[,!colnames(train) %in% c("y", "flag_sum", "consec", "ID")]
+tmp <- tmp[,9:ncol(tmp)]
+train$row_means  <- rowMeans(tmp)
+train$row_means2 <- log(train$row_means)
+train$x5x3       <- paste0(train$X5, train$X3)
+train$x4x3       <- paste0(train$X4, train$X3)
+train$x4x6       <- paste0(train$X4, train$X6)
+
+tmp <- test[,!colnames(test) %in% c("y", "flag_sum", "consec", "ID")]
+tmp <- tmp[,9:ncol(tmp)]
+test$row_means  <- rowMeans(tmp)
+test$row_means2 <- log(test$row_means)
+test$x5x3       <- paste0(test$X5, test$X3)
+test$x4x3       <- paste0(test$X4, test$X3)
+test$x4x6       <- paste0(test$X4, test$X6)
+
+tg <- expand.grid(nrounds = c(200, 1200),
+                  max_depth = c(4),
+                  eta = c(.01, .02),
+                  gamma = c(.01),
+                  colsample_bytree = 1,
+                  min_child_weight = 1,
+                  subsample = .5)
+
+
+mod9 <- caret::train(y="y",
+                     setdiff(colnames(train),"y"),
+                     data = train,
+                     method = "xgbTree",
+                     metric = "Rsquared",
+                     trControl = control,
+                     tuneGrid = tg,
+                     preProc = c("zv","center","scale"))
+# Fitting nrounds = 1200, max_depth = 4, eta = 0.02, gamma = 0.01, colsample_bytree = 1, min_child_weight = 1, subsample = 0.5 on full training set
+
+plot(mod9)
+mod9 #
+
+pred9 <- predict(mod9, as.data.frame(test)) #, type = "response"
+plot(density(pred9))
+summary(pred9)
+# eta   nrounds  RMSE       Rsquared
+# 0.01   200     14.641610  0.8752863
+# 0.01  1200      1.955045  0.9756690
+# 0.02   200      3.983200  0.9320732
+# 0.02  1200      1.561385  0.9828618
+
+sample$y <- pred9
+fwrite(sample, "..//output//caret_mod9.csv")
+
+xgb.importance(colnames(train),mod9$finalModel)
+
+
+# Caret model 10 ----------------------------------------------------------
+
+#https://cran.r-project.org/web/packages/caretEnsemble/vignettes/caretEnsemble-intro.html
+
+library("mlbench")
+library("randomForest")
+library("nnet")
+p_load(caretEnsemble)
+
+model_list_big <- caretList(
+  y~., data=train,
+  trControl=control,
+  metric="Rsquared",
+  methodList=c("xgbTree", "rpart"),
+  tuneList=list(
+    xgb=caretModelSpec(method="xgbTree",nrounds = 1200, max_depth = 4, eta = 0.02, gamma = 0.01, colsample_bytree = 1, min_child_weight = 1, subsample = 0.5),
+    nn=caretModelSpec(method="nnet", tuneLength=2, trace=FALSE)
+  )
+)
+
 # Resampling that didnt work ----------------------------------------------
 
 #library(keras)
